@@ -1,0 +1,35 @@
+{
+  "name": "factorio-save-upgrader",
+  "description": "A server which only exists briefly, to stepwise upgrade old save games to the most recent game version.",
+  "tags": [
+    "factorio-save-upgrader"
+  ],
+  "max_players": 1,
+  "visibility":
+  {
+    "public": false,
+    "lan": true
+  },
+  "username": "",
+  "password": "",
+  "token": "",
+  "game_password": "construction site",
+  "require_user_verification": false,
+  "max_upload_in_kilobytes_per_second": 0,
+  "max_upload_slots": 1,
+  "minimum_latency_in_ticks": 0,
+  "max_heartbeats_per_second": 60,
+  "ignore_player_limit_for_returning_players": false,
+  "allow_commands": "admins-only",
+  "autosave_interval": 0,
+  "autosave_slots": 1,
+  "afk_autokick_interval": 1,
+  "auto_pause": true,
+  "only_admins_can_pause_the_game": true,
+  "autosave_only_on_server": true,
+  "non_blocking_saving": true,
+  "minimum_segment_size": 25,
+  "minimum_segment_size_peer_count": 20,
+  "maximum_segment_size": 100,
+  "maximum_segment_size_peer_count": 10
+}

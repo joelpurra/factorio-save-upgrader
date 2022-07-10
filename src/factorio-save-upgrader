@@ -1,0 +1,331 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# This file is part of factorio-save-upgrader -- tool to upgrade old Factorio game save files.
+# <https://joelpurra.com/projects/factorio-save-upgrader/>
+# Copyright (c) 2022 Joel Purra <https://joelpurra.com/>
+# factorio-save-upgrader is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# factorio-save-upgrader is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with factorio-save-upgrader.  If not, see <https://www.gnu.org/licenses/>.
+
+declare SCRIPT_DIRECTORY
+SCRIPT_DIRECTORY="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+# NOTE: configurable via environment variables.
+declare -r -i FACTORIO_SAVE_UPGRADER_DEBUG_LEVEL="${FACTORIO_SAVE_UPGRADER_DEBUG_LEVEL:-0}"
+
+if (( FACTORIO_SAVE_UPGRADER_DEBUG_LEVEL > 0 ));
+then
+  set -o xtrace
+fi
+
+# NOTE: configurable via environment variables.
+declare -r FACTORIO_DOCKER_IMAGE="${FACTORIO_DOCKER_IMAGE:-factoriotools/factorio}"
+declare -r FACTORIO_TIMEOUT="${FACTORIO_TIMEOUT:-60s}"
+declare -r FACTORIO_CONFIG_SERVER_SETTINGS_PATH="${FACTORIO_CONFIG_SERVER_SETTINGS_PATH:-${SCRIPT_DIRECTORY}/config/server-settings.json}"
+# shellcheck disable=SC2206
+declare -r -a FACTORIO_VERSIONS=(
+  # NOTE: only listing "major" versions changes, since the save file format should not change between minor versions.
+  # NOTE: skipping the non-numeric docker image tags (latest, stable) for easier version number comparison.
+  ${FACTORIO_VERSIONS:-1.1 1.0 0.18 0.17 0.16 0.15 0.14 0.13 0.12}
+)
+
+declare -r FACTORIO_VERSION_LATEST="${FACTORIO_VERSIONS[0]}"
+
+# ---
+
+declare -r PROJECT_NAME='factorio-save-upgrader'
+
+function timestamp() {
+  date --iso-8601='seconds'
+}
+
+function die() {
+  echo "$(timestamp) ${PROJECT_NAME} ERROR:" "${@}" >&2
+  exit 1
+}
+
+function info() {
+  echo "$(timestamp) ${PROJECT_NAME} INFO:" "${@}" >&2
+}
+
+function verboseStream() {
+  if (( FACTORIO_SAVE_UPGRADER_DEBUG_LEVEL > 0 ));
+  then
+    cat >&2
+  else
+    cat >/dev/null
+  fi
+}
+
+function usage() {
+  echo "${PROJECT_NAME}: tool to upgrade old Factorio game save files" >&2
+  echo "" >&2
+  echo "https://joelpurra.com/projects/factorio-save-upgrader/" >&2
+  echo "https://factorio.com/" >&2
+  echo "" >&2
+  echo "USAGE: ${PROJECT_NAME} <output directory> <input directory or file(s)>" >&2
+}
+
+function runFactorioVersion() {
+  local -r SAVE_FILE_INPUT_PATH="$1"
+  shift
+  local -r SAVE_FILE_OUTPUT_PATH="$1"
+  shift
+  local -r FACTORIO_VERSION="$1"
+  shift
+
+  local FACTORIO_DOCKER_IMAGE_FULL="${FACTORIO_DOCKER_IMAGE}:${FACTORIO_VERSION}"
+
+  info "Attempting to load save in Factorio docker image '${FACTORIO_DOCKER_IMAGE_FULL}' (timeout ${FACTORIO_TIMEOUT})"
+
+  local -r FACTORIO_TEMPORARY_DATA_DIRECTORY="${FACTORIO_TEMPORARY_BASE_DIRECTORY}/${FACTORIO_VERSION}"
+
+  # NOTE: copying save file so the internal service account can take ownership without affecting the original file.
+  local -r SAVE_FILE_INPUT_PATH_BASENAME="$(basename "$SAVE_FILE_INPUT_PATH")"
+  local -r FACTORIO_TEMPORARY_SAVES_DIRECTORY="${FACTORIO_TEMPORARY_DATA_DIRECTORY}/saves"
+  mkdir --parents "$FACTORIO_TEMPORARY_SAVES_DIRECTORY"
+  local -r FACTORIO_TEMPORARY_SAVE_PATH="${FACTORIO_TEMPORARY_SAVES_DIRECTORY}/${SAVE_FILE_INPUT_PATH_BASENAME}"
+  cp "$SAVE_FILE_INPUT_PATH" "$FACTORIO_TEMPORARY_SAVE_PATH"
+
+  # NOTE: copying server-settings.json so the internal service account can take ownership without affecting the source file.
+  local -r FACTORIO_TEMPORARY_CONFIG_DIRECTORY="${FACTORIO_TEMPORARY_DATA_DIRECTORY}/config"
+  mkdir --parents "$FACTORIO_TEMPORARY_CONFIG_DIRECTORY"
+  local -r FACTORIO_TEMPORARY_SERVER_SETTINGS_PATH="${FACTORIO_TEMPORARY_CONFIG_DIRECTORY}/server-settings.json"
+  cp "$FACTORIO_CONFIG_SERVER_SETTINGS_PATH" "$FACTORIO_TEMPORARY_SERVER_SETTINGS_PATH"
+
+    # NOTE: separate image download from execution to avoid timeouts.
+  if [[ "$(docker image inspect --format 'image found' "$FACTORIO_DOCKER_IMAGE_FULL" 2>/dev/null)" != "image found" ]];
+  then
+    docker pull "$FACTORIO_DOCKER_IMAGE_FULL" >&2
+  fi
+
+  set +o errexit
+
+  # NOTE: running the server with a timeout, so it shuts down even if the map loaded correctly.
+  # NOTE: you can connect to the running server if you direct connect to localhost.
+  timeout --signal 'INT' "$FACTORIO_TIMEOUT" \
+    docker run \
+      --init \
+      --rm \
+      -p 34197:34197/udp \
+      -p 27015:27015/tcp \
+      --volume "${FACTORIO_TEMPORARY_SAVES_DIRECTORY}:/factorio/saves/" \
+      --volume "${FACTORIO_TEMPORARY_SERVER_SETTINGS_PATH}:/factorio/config/server-settings.json" \
+      --name "$PROJECT_NAME" \
+      "$FACTORIO_DOCKER_IMAGE_FULL" |& verboseStream
+
+  local -r -i FACTORIO_EXIT_CODE="${PIPESTATUS[0]}"
+
+  set -o errexit
+
+  # NOTE: exit code 124 means there was an execution timeout, which should mean that the map loaded successfully and the server was running.
+  if (( FACTORIO_EXIT_CODE == 0 || FACTORIO_EXIT_CODE == 124 ));
+  then
+    info "Succeeded when using '${FACTORIO_DOCKER_IMAGE_FULL}'"
+
+    cp "$FACTORIO_TEMPORARY_SAVE_PATH" "$SAVE_FILE_OUTPUT_PATH"
+  else
+    info "Failed when using '${FACTORIO_DOCKER_IMAGE_FULL}'"
+  fi
+
+  # NOTE: temporary file cleanup from "inside" the container, to workaround internal account service access issues.
+  docker run \
+    --init \
+    --rm \
+    --volume "${FACTORIO_TEMPORARY_SAVES_DIRECTORY}:/factorio/saves/" \
+    --name "$PROJECT_NAME" \
+    --entrypoint '/bin/bash' \
+    "$FACTORIO_DOCKER_IMAGE_FULL" \
+    -c 'rm -r /factorio >/dev/null 2>&1' >&2
+
+  rm --recursive --force "$FACTORIO_TEMPORARY_DATA_DIRECTORY"
+
+  if (( FACTORIO_EXIT_CODE == 0 || FACTORIO_EXIT_CODE == 124 ));
+  then
+    return 0
+  fi
+
+  return 1
+}
+
+function findLoadingVersion() {
+  local -r SAVE_FILE_INPUT_PATH="$1"
+  shift
+  local -r SAVE_FILE_OUTPUT_PATH="$1"
+  shift
+  local -r -a FACTORIO_ATTEMPT_VERSIONS=(
+    "$@"
+  )
+
+  for FACTORIO_VERSION_ATTEMPT in "${FACTORIO_ATTEMPT_VERSIONS[@]}";
+  do
+    if runFactorioVersion "$SAVE_FILE_INPUT_PATH" "$SAVE_FILE_OUTPUT_PATH" "$FACTORIO_VERSION_ATTEMPT";
+    then
+      # NOTE: when merely loading the save file, stop on success (meaning most recent compatible version).
+      echo "$FACTORIO_VERSION_ATTEMPT"
+
+      return 0
+    fi
+  done
+}
+
+function findUpgradingVersion() {
+  local -r SAVE_FILE_INPUT_PATH="$1"
+  shift
+  local -r SAVE_FILE_OUTPUT_PATH="$1"
+  shift
+  local -r -a FACTORIO_ATTEMPT_VERSIONS=(
+    "$@"
+  )
+
+  local FACTORIO_VERSION_PREVIOUS_ATTEMPT
+
+  for FACTORIO_VERSION_ATTEMPT in "${FACTORIO_ATTEMPT_VERSIONS[@]}";
+  do
+    if ! runFactorioVersion "$SAVE_FILE_INPUT_PATH" "$SAVE_FILE_OUTPUT_PATH" "$FACTORIO_VERSION_ATTEMPT";
+    then
+      # NOTE: bad case, do not attempt any more upgrades.
+      echo "$FACTORIO_VERSION_PREVIOUS_ATTEMPT"
+
+      return 0
+    fi
+
+    # NOTE: propagate/promote the upgraded version to the next iteration.
+    cp "$SAVE_FILE_OUTPUT_PATH" "$SAVE_FILE_INPUT_PATH"
+
+    FACTORIO_VERSION_PREVIOUS_ATTEMPT="$FACTORIO_VERSION_ATTEMPT"
+  done
+
+  # NOTE: good case, executed all versions.
+  echo "$FACTORIO_VERSION_ATTEMPT"
+}
+
+function upgradeFile() {
+  local -r SAVE_FILE_INPUT_PATH="$1"
+  shift
+  local -r SAVE_FILE_OUTPUT_PATH="$1"
+  shift
+
+  local -r SAVE_FILE_INPUT_PATH_BASENAME="$(basename "$SAVE_FILE_INPUT_PATH")"
+  local -r FACTORIO_TEMPORARY_OUTPUT_DIRECTORY="${FACTORIO_TEMPORARY_BASE_DIRECTORY}/scratch"
+  mkdir --parents "$FACTORIO_TEMPORARY_OUTPUT_DIRECTORY"
+  local -r FACTORIO_TEMPORARY_OUTPUT_PATH="${FACTORIO_TEMPORARY_OUTPUT_DIRECTORY}/${SAVE_FILE_INPUT_PATH_BASENAME}"
+
+  info "Upgrading save file: '${SAVE_FILE_INPUT_PATH}'"
+
+  local -r FACTORIO_VERSION_LOADED="$(findLoadingVersion "$SAVE_FILE_INPUT_PATH" "$FACTORIO_TEMPORARY_OUTPUT_PATH" "${FACTORIO_VERSIONS[@]}")"
+
+  if [[ -z "$FACTORIO_VERSION_LOADED" ]];
+  then
+    rm --recursive "$FACTORIO_TEMPORARY_OUTPUT_DIRECTORY"
+
+    info "Did not succeed to load the save file in any available Factorio version."
+
+    return 0
+  fi
+
+  if [[ "$FACTORIO_VERSION_LOADED" == "$FACTORIO_VERSION_LATEST" ]];
+  then
+    rm --recursive "$FACTORIO_TEMPORARY_OUTPUT_DIRECTORY"
+
+    info "Succeed to load the save file in the latest available Factorio version, no upgrade necessary: '${SAVE_FILE_INPUT_PATH}'"
+
+    return 0
+  fi
+
+  # shellcheck disable=SC2207
+  local -r -a FACTORIO_VERSIONS_REVERSE=(
+    $(echo "${FACTORIO_VERSIONS[@]}" | sed "s/ ${FACTORIO_VERSION_LOADED}.*//" | tr ' ' '\n' | sort)
+  )
+
+  local -r FACTORIO_VERSION_UPGRADED="$(findUpgradingVersion "$FACTORIO_TEMPORARY_OUTPUT_PATH" "$SAVE_FILE_OUTPUT_PATH" "${FACTORIO_VERSIONS_REVERSE[@]}")"
+
+  rm --recursive "$FACTORIO_TEMPORARY_OUTPUT_DIRECTORY"
+
+  if [[ -z "$FACTORIO_VERSION_UPGRADED" ]];
+  then
+    info "Succeed to load the save file in version ${FACTORIO_VERSION_LOADED}, but not in any newer Factorio version. The save file may have been upgraded, but probably not to the latest version."
+
+    return 0
+  fi
+
+  info "Loaded the save file in version ${FACTORIO_VERSION_LOADED}, then upgraded it to version ${FACTORIO_VERSION_UPGRADED}: '${SAVE_FILE_OUTPUT_PATH}'"
+}
+
+function main() {
+  if (( "$#" == 0 ));
+  then
+    usage
+
+    exit 0
+  fi
+
+  local -r -a SAVE_FILES_OUTPUT_DIRECTORY="$1"
+  shift
+  local -a SAVE_FILES_INPUT_PATHS=(
+    "$@"
+  )
+
+  if [[ ! -d "$SAVE_FILES_OUTPUT_DIRECTORY" ]];
+  then
+    die "Could not find output directory: '${SAVE_FILES_OUTPUT_DIRECTORY}'"
+  fi
+
+  # NOTE: allow individual file(s) or allow a single input directory.
+  if (( "${#SAVE_FILES_INPUT_PATHS[@]}" == 1 )) && [[ -d "${SAVE_FILES_INPUT_PATHS[0]}" ]];
+  then
+      IFS= readarray -d '' SAVE_FILES_INPUT_PATHS < <(find "${SAVE_FILES_INPUT_PATHS[0]}" -mindepth 1 -maxdepth 1 -iname '*.zip' -print0 | sort --zero-terminated --numeric-sort)
+  fi
+
+  local SAVE_FILE_INPUT_PATH
+
+  for SAVE_FILE_INPUT_PATH in "${SAVE_FILES_INPUT_PATHS[@]}";
+  do
+    local SAVE_FILE_INPUT_PATH_BASENAME
+    SAVE_FILE_INPUT_PATH_BASENAME="$(basename "$SAVE_FILE_INPUT_PATH")"
+    local SAVE_FILE_OUTPUT_PATH="${SAVE_FILES_OUTPUT_DIRECTORY}/${SAVE_FILE_INPUT_PATH_BASENAME}"
+
+    if [[ -a "$SAVE_FILE_OUTPUT_PATH" ]];
+    then
+      die "File already exists in the output directory, aborting: '${SAVE_FILE_OUTPUT_PATH}'"
+    fi
+  done
+
+  FACTORIO_TEMPORARY_BASE_DIRECTORY="$(mktemp --tmpdir --directory "${PROJECT_NAME}.XXXXXXX")"
+
+  if [[ -z "$FACTORIO_TEMPORARY_BASE_DIRECTORY" ]];
+  then
+    die "Could not create temporary directory."
+  fi
+
+  function cleanup() {
+    rm --recursive --force "$FACTORIO_TEMPORARY_BASE_DIRECTORY" || info "Could not remove the temporary directory. This usually happens because it is owned by the temporary directories were created by a service account inside the docker image. Remember to manually remove '${FACTORIO_TEMPORARY_BASE_DIRECTORY}' ($(du --human-readable --total "${FACTORIO_TEMPORARY_BASE_DIRECTORY}" | tail --lines 1 | cut --fields 1))"
+  }
+
+  trap cleanup EXIT
+
+  for SAVE_FILE_INPUT_PATH in "${SAVE_FILES_INPUT_PATHS[@]}";
+  do
+    local SAVE_FILE_INPUT_PATH_BASENAME
+    SAVE_FILE_INPUT_PATH_BASENAME="$(basename "$SAVE_FILE_INPUT_PATH")"
+    local SAVE_FILE_OUTPUT_PATH="${SAVE_FILES_OUTPUT_DIRECTORY}/${SAVE_FILE_INPUT_PATH_BASENAME}"
+
+    upgradeFile "$SAVE_FILE_INPUT_PATH" "$SAVE_FILE_OUTPUT_PATH"
+  done
+}
+
+# NOTE: used during cleanup.
+declare FACTORIO_TEMPORARY_BASE_DIRECTORY
+
+main "$@"
