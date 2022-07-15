@@ -6,7 +6,7 @@
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![A concept of a factory for the trailer in 0.12](https://cdn.factorio.com/assets/img/blog/fff-353-05-factorio012-fullsize.png)](https://cdn.factorio.com/assets/img/blog/fff-353-05-factorio012-fullsize.png) | [![A concept of a factory for the trailer in 0.18 ](https://cdn.factorio.com/assets/img/blog/fff-353-04-factorio018-fullsize.png)](https://cdn.factorio.com/assets/img/blog/fff-353-04-factorio018-fullsize.png) |
 
-[Screenshots of concepts](https://www.factorio.com/blog/post/fff-353) for the [Factorio 1.0 launch trailer](https://www.youtube.com/watch?v=BqaAjgpsoW8) from the [Factorio blog](https://www.factorio.com/blog/).
+[Screenshots of factory concepts](https://www.factorio.com/blog/post/fff-353) for the [Factorio 1.0 launch trailer](https://www.youtube.com/watch?v=BqaAjgpsoW8), showcasing the evolution of the game. The [Factorio blog](https://www.factorio.com/blog/) covers the process in detail.
 
 # [factorio-save-upgrader](https://joelpurra.com/projects/factorio-save-upgrader/)
 
@@ -22,20 +22,11 @@ Tool to upgrade old [Factorio](https://factorio.com/) game save files to the new
 - Leaves up-to-date save files alone.
 - Does not require the full game to be installed. Save file can be transferred to a separate computer where upgrades are performed.
 
-## Limitations
-
-- Factorio has evolved over the years. For example some recipes, such as [oil processing](https://www.factorio.com/blog/post/fff-305), have changed so your factory may not run very well without manual fixes.
-- Only upgrading vanilla Factorio has been tested. For this reason, upgrading save files [with mods](https://mods.factorio.com/) are not officially supported by this tool.
-- Replay support is untested. Presumably [doesn't upgrade replays](https://wiki.factorio.com/Replay_system), since they are more tightly coupled to the version used for recording. Loading the map may still work, but replaying is not possible.
-- The save preview (screenshot) is lost during automated upgrades. When saving using the full game it is regenerated.
-- This tool doesn't inspect the `savegame.zip` files to try to figure out which upgrades might be necessary. Instead it brute-forces the solution by testing the save file against several major versions of Factorio until loading succeeds. The save file is then upgraded step-by-step through each subsequent major version.
-- This tool doesn't detect _when_ the save file has been successfully upgraded. Instead it waits for 60 seconds (by default) during each step, and then assumes everything went well. Upgrading a large/complex map on a slow machine _may_ take even longer, potentially interrupting the process prematurely. Upgrading a small/simple map on a reasonably fast machine _only takes seconds_ though, so the extra wait may seem unneccessary. Adjust to your liking; see [usage](#usage).
-
 ## Version compatibility
 
 Not all Factorio versions have (working) Docker images. Check the [issues for this tool](https://github.com/joelpurra/factorio-save-upgrader/issues?q=) as well as [issues for Factorio Docker](https://github.com/factoriotools/factorio-docker/issues?q=) for possible solutions.
 
-Here is a table of last known status (although presumably constantly outdated) for the available Factorio Docker image versions. Major game versions can also load _some_ older save file formats. For example, Factorio 0.17 also supports upgrading from 0.16 and 0.15.
+Here is a table of last known status (although it is presumably constantly outdated) for the available Factorio Docker image versions. Major game versions can also load _some_ older save file formats. For example, Factorio 0.17 also supports upgrading from 0.16 and 0.15.
 
 | Version | Running | Upgrading from |
 | ------- | ------- | -------------- |
@@ -50,6 +41,15 @@ Here is a table of last known status (although presumably constantly outdated) f
 | 0.12    | ❌      | ❓             |
 
 Older versions are not supported, unless someone publishes a compatible Docker image.
+
+## Limitations
+
+- Factorio has evolved over the years. For example some recipes, such as [oil processing](https://www.factorio.com/blog/post/fff-305), have changed so your factory may not run very well without manual fixes.
+- Only upgrading vanilla Factorio has been tested. For this reason, upgrading save files [with mods](https://mods.factorio.com/) are not officially supported by this tool.
+- Replay support is untested. Presumably [doesn't upgrade replays](https://wiki.factorio.com/Replay_system), since they are more tightly coupled to the version used for recording. Loading the map may still work, but replaying is not possible.
+- The save preview (screenshot) is lost during automated upgrades. When saving using the full game it is regenerated.
+- This tool doesn't inspect the `savegame.zip` files to try to figure out which upgrades might be necessary. Instead it brute-forces the solution by testing the save file against several major versions of Factorio until loading succeeds. The save file is then upgraded step-by-step through each subsequent major version.
+- This tool doesn't detect _when_ the save file has been successfully upgraded. Instead it waits for 60 seconds (by default) during each step, and then assumes everything went well. Upgrading a large/complex map on a slow machine _may_ take even longer, potentially interrupting the process prematurely. Upgrading a small/simple map on a reasonably fast machine _only takes seconds_ though, so the extra wait may seem unneccessary. Adjust to your liking; see [usage](#usage).
 
 ## Requirements
 
@@ -72,7 +72,7 @@ cd factorio-save-upgrader
 # NOTE: either run directly from this directory...
 ./factorio-save-upgrader
 
-# NOTE: ... or optionally symlink to your $PATH for ease of use.
+# NOTE: ...or optionally symlink to your $PATH for ease of use.
 ln --symbolic "${PWD}/factorio-save-upgrader" ~/bin/
 
 factorio-save-upgrader
@@ -86,6 +86,8 @@ Only successfully upgraded files are put in the output directory.
 factorio-save-upgrader <output directory> <input directory or file(s)>
 ```
 
+Examples assume loading saves from [Factorio's default user data directory location on a Linux system](https://wiki.factorio.com/Application_directory).
+
 ## Basic examples
 
 **Simple backup**
@@ -97,8 +99,6 @@ cp --recursive ~/.factorio/saves ~/factorio-saves-backup-$(date +%F)
 ```
 
 **Upgrade all saves to another directory**
-
-Assumes [Factorio's default user data directory location on a Linux system](https://wiki.factorio.com/Application_directory).
 
 Afterwards, manually copy the upgraded save files from `~/factorio-upgraded-saves` to `~/.factorio/saves`.
 
@@ -120,7 +120,7 @@ FACTORIO_SAVE_UPGRADER_DEBUG_LEVEL='1' factorio-save-upgrader ~/factorio-upgrade
 
 **Shorter map upgrade timeout**
 
-A shorter timeout can speed things up if you have many save files, but if your map is too complex or your machine to slow it might fail.
+A shorter timeout can speed things up if you have many save files, but if your map is too complex or your machine too slow it might fail.
 
 You can also increase the timeout, and connect to the game server to verify that the upgrade worked. Start Factorio and connect to address `localhost` from the multiplayer menu.
 
@@ -145,7 +145,7 @@ Advanced users may use custom images; see the source code for details.
 **Pull updates for all local Factorio images**
 
 ```shell
-docker image ls --format '{{.Repository}}:{{.Tag}}' --filter 'reference=factoriotools/factorio' | xargs --max-lines=1 echo docker pull
+docker image ls --format '{{.Repository}}:{{.Tag}}' --filter 'reference=factoriotools/factorio' | xargs --max-lines=1 docker pull
 ```
 
 **Delete all local Factorio images to force re-download**
