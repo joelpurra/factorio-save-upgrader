@@ -15,12 +15,23 @@ Tool to upgrade old [Factorio](https://factorio.com/) game save files to the new
 > ⚠ **Use this tool at your own risk. Backup your saves first.**  
 > The save file format in Factorio [is pretty stable](https://gaming.stackexchange.com/questions/307514/have-saved-games-been-compatible-after-patches). Each [Factorio "major" version](https://wiki.factorio.com/Version_history) supports loading save games from one or more previous save file formats. The game will tell you if your save file is too old, otherwise you don't need to do anything.
 
-- Loads saves using images from [Factorio Docker](https://github.com/factoriotools/factorio-docker) ([factoriotools/factorio-docker](https://hub.docker.com/r/factoriotools/factorio/)), originally intented for running dedicated game servers.
-- Performs a stepwise upgrade, from the oldest compatible version to the newest available.
+The stepwise load/upgrade concept:
+
+```text
+Loading
+1.1   1.0   0.18   0.17   0.16
+❌ --> ❌ --> ❌ --> ✅ ... ❓ ...
+                    |
+Upgrading           |
+1.1   1.0   0.18    |
+✅ <-- ✅ <-- ✅ <----
+```
+
+- First `factorio-save-upgrader` loads (a copy of) the save in the most recent Factorio version possible, then upgrades it stepwise to the most recent version available. After shutting down the last instance the map is fully upgraded, and the modified file is put in the output directory.
+- Leaves up-to-date save files alone. Output is written with the same filename but to a different directory. Does not overwrite existing files.
 - Can upgrade [all save files in the `./saves` directory](https://wiki.factorio.com/Application_directory) at once, or one by one.
-- Does not overwrite existing files. Output is written with the same filename but to a different directory.
-- Leaves up-to-date save files alone.
 - Does not require the full game to be installed. Save file can be transferred to a separate computer where upgrades are performed.
+- Built [using](https://github.com/factoriotools/factorio-docker/issues/440) [Factorio Docker](https://github.com/factoriotools/factorio-docker) ([factoriotools/factorio-docker](https://hub.docker.com/r/factoriotools/factorio/)), originally intented for running dedicated game servers.
 
 ## Version compatibility
 
