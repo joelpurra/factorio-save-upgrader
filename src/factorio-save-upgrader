@@ -114,7 +114,7 @@ function runFactorioVersion() {
 
   # NOTE: running the server with a timeout, so it shuts down even if the map loaded correctly.
   # NOTE: you can connect to the running server if you direct connect to localhost.
-  timeout --signal 'INT' "$FACTORIO_TIMEOUT" \
+  timeout "$FACTORIO_TIMEOUT" \
     docker run \
       --init \
       --rm \
