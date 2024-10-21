@@ -2,9 +2,9 @@
 	<a href="https://factorio.com/"><img src="https://cdn.factorio.com/assets/img/web/factorio-logo.png" width="460" height="76" border="0" /></a>
 </p>
 
-| Factorio 0.12                                                                                                                                                                                                   | Factorio 0.18                                                                                                                                                                                                    |
+| Factorio v0.12                                                                                                                                                                                                   | Factorio v0.18                                                                                                                                                                                                    |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![A concept of a factory for the trailer in 0.12](https://cdn.factorio.com/assets/img/blog/fff-353-05-factorio012-fullsize.png)](https://cdn.factorio.com/assets/img/blog/fff-353-05-factorio012-fullsize.png) | [![A concept of a factory for the trailer in 0.18 ](https://cdn.factorio.com/assets/img/blog/fff-353-04-factorio018-fullsize.png)](https://cdn.factorio.com/assets/img/blog/fff-353-04-factorio018-fullsize.png) |
+| [![A concept of a factory for the trailer in v0.12](https://cdn.factorio.com/assets/img/blog/fff-353-05-factorio012-fullsize.png)](https://cdn.factorio.com/assets/img/blog/fff-353-05-factorio012-fullsize.png) | [![A concept of a factory for the trailer in v0.18 ](https://cdn.factorio.com/assets/img/blog/fff-353-04-factorio018-fullsize.png)](https://cdn.factorio.com/assets/img/blog/fff-353-04-factorio018-fullsize.png) |
 
 [Screenshots of factory concepts](https://www.factorio.com/blog/post/fff-353) for the [Factorio 1.0 launch trailer](https://www.youtube.com/watch?v=BqaAjgpsoW8), showcasing the evolution of the game. The [Factorio blog](https://www.factorio.com/blog/) covers the process in detail.
 
@@ -19,12 +19,12 @@ The stepwise load/upgrade concept:
 
 ```text
 Loading
-2.0   1.1   1.0    0.17   0.16
-❌ --> ❌ --> ❌ --> ✅ ... ❓ ...
-                    |
-Upgrading           |
-2.0   1.1   1.0     |
-✅ <-- ✅ <-- ✅ <----
+v2.0   v1.1   v1.0   v0.17  v0.16
+❌ ---> ❌ ---> ❌ ---> ✅ ... ❓ ...
+                       |
+Upgrading              |
+v2.0   v1.1   v1.0     |
+✅ <--- ✅ <--- ✅ <-----
 ```
 
 - First `factorio-save-upgrader` loads (a copy of) the save in the most recent Factorio version possible, then upgrades it stepwise to the most recent version available. After shutting down the last instance the map is fully upgraded, and the modified file is put in the output directory.
@@ -37,21 +37,21 @@ Upgrading           |
 
 Not all Factorio versions have (working) container images. Check the [issues for this tool](https://github.com/joelpurra/factorio-save-upgrader/issues?q=) as well as [issues for Factorio Docker](https://github.com/factoriotools/factorio-docker/issues?q=) for possible solutions.
 
-Here is a table of last known status (although it is presumably constantly outdated) for the available Factorio Docker container image versions. Major game versions can also load _some_ older save file formats. For example, Factorio 0.17 also supports upgrading from 0.16 and 0.15.
+Here is a table of last known status (although it is presumably constantly outdated) for the available Factorio Docker container image versions. Major game versions can also load _some_ older save file formats. For example, Factorio v0.17 also supports upgrading from v0.16 and v0.15.
 
 | Version | Running | Upgrading from |
 | ------- | ------- | -------------- |
-| 2.0     | ✅      | ✅             |
-| 1.1     | ✅      | ✅             |
-| 1.0     | ✅      | ✅             |
-| 0.17    | ✅      | ✅             |
-| 0.16    | ❌      | ✅             |
-| 0.15    | ❌      | ✅             |
-| 0.14    | ❌      | ❓             |
-| 0.13    | ❌      | ❓             |
-| 0.12    | ❌      | ❓             |
+| v2.0    | ✅      | ✅             |
+| v1.1    | ✅      | ✅             |
+| v1.0    | ✅      | ✅             |
+| v0.17   | ✅      | ✅             |
+| v0.16   | ❌      | ✅             |
+| v0.15   | ❌      | ✅             |
+| v0.14   | ❌      | ❓             |
+| v0.13   | ❌      | ❓             |
+| v0.12   | ❌      | ❓             |
 
-Older versions are not supported, unless someone publishes a compatible container image. Version 0.18 is no longer available, but should be equivalent to 1.0.
+Older versions are not supported, unless someone publishes a compatible container image. Factorio v0.18 is no longer available, but should be equivalent to v1.0.
 
 ## Limitations
 
