@@ -50,13 +50,47 @@ function timestamp() {
   date --iso-8601='seconds'
 }
 
+function shouldDisplayAnsiColor() {
+  # https://no-color.org/
+  test -z "${NO_COLOR:-}"
+}
+
+function optionalAnsiColor() {
+  local -r COLOR_CODE="$1"
+  shift
+
+  if shouldDisplayAnsiColor;
+  then
+    printf "\\033[%dm%s\\033[m" "$COLOR_CODE" "$@"
+  else
+    printf '%s' "$@"
+  fi
+}
+
 function die() {
-  echo "$(timestamp) ${PROJECT_NAME} ERROR:" "${@}" >&2
+  echo "$(timestamp) ${PROJECT_NAME} $(optionalAnsiColor 91 "FATAL"):" "${@}" >&2
   exit 1
 }
 
-function info() {
-  echo "$(timestamp) ${PROJECT_NAME} INFO:" "${@}" >&2
+function log_error() {
+  echo "$(timestamp) ${PROJECT_NAME} $(optionalAnsiColor 91 "ERROR"):" "${@}" >&2
+  exit 1
+}
+
+function log_warn() {
+  echo "$(timestamp) ${PROJECT_NAME} $(optionalAnsiColor 93 "WARNING"):" "${@}" >&2
+}
+
+function log_notice() {
+  echo "$(timestamp) ${PROJECT_NAME} $(optionalAnsiColor 36 "NOTICE"):" "${@}" >&2
+}
+
+function log_info() {
+  echo "$(timestamp) ${PROJECT_NAME} $(optionalAnsiColor 34 "INFO"):" "${@}" >&2
+}
+
+function log_log() {
+  echo "$(timestamp) ${PROJECT_NAME} LOG:" "${@}" >&2
 }
 
 function verboseStream() {
@@ -87,7 +121,7 @@ function runFactorioVersion() {
 
   local FACTORIO_CONTAINER_IMAGE_FULL="${FACTORIO_CONTAINER_IMAGE}:${FACTORIO_VERSION}"
 
-  info "Attempting to load save in Factorio container image '${FACTORIO_CONTAINER_IMAGE_FULL}' (timeout ${FACTORIO_TIMEOUT})"
+  log_log "Attempting to load save in Factorio container image '${FACTORIO_CONTAINER_IMAGE_FULL}' (timeout ${FACTORIO_TIMEOUT})"
 
   local -r FACTORIO_TEMPORARY_DATA_DIRECTORY="${FACTORIO_TEMPORARY_BASE_DIRECTORY}/${FACTORIO_VERSION}"
 
@@ -133,11 +167,11 @@ function runFactorioVersion() {
   # NOTE: exit code 124 means there was an execution timeout, which should mean that the map loaded successfully and the server was running.
   if (( FACTORIO_EXIT_CODE == 0 || FACTORIO_EXIT_CODE == 124 ));
   then
-    info "Succeeded when using '${FACTORIO_CONTAINER_IMAGE_FULL}'"
+    log_info "Succeeded when using '${FACTORIO_CONTAINER_IMAGE_FULL}'"
 
     cp "$FACTORIO_TEMPORARY_SAVE_PATH" "$SAVE_FILE_OUTPUT_PATH"
   else
-    info "Failed when using '${FACTORIO_CONTAINER_IMAGE_FULL}'"
+    log_log "Failed when using '${FACTORIO_CONTAINER_IMAGE_FULL}'"
   fi
 
   # NOTE: temporary file cleanup from "inside" the container, to workaround internal account service access issues.
@@ -224,7 +258,7 @@ function upgradeFile() {
   mkdir --parents "$FACTORIO_TEMPORARY_OUTPUT_DIRECTORY"
   local -r FACTORIO_TEMPORARY_OUTPUT_PATH="${FACTORIO_TEMPORARY_OUTPUT_DIRECTORY}/${SAVE_FILE_INPUT_PATH_BASENAME}"
 
-  info "Upgrading save file: '${SAVE_FILE_INPUT_PATH}'"
+  log_notice "Upgrading save file: '${SAVE_FILE_INPUT_PATH}'"
 
   local -r FACTORIO_VERSION_LOADED="$(findLoadingVersion "$SAVE_FILE_INPUT_PATH" "$FACTORIO_TEMPORARY_OUTPUT_PATH" "${FACTORIO_VERSIONS[@]}")"
 
@@ -232,7 +266,7 @@ function upgradeFile() {
   then
     rm --recursive "$FACTORIO_TEMPORARY_OUTPUT_DIRECTORY"
 
-    info "Did not succeed to load the save file in any available Factorio version."
+    log_warn "Did not succeed to load the save file in any available Factorio version."
 
     return 0
   fi
@@ -241,7 +275,7 @@ function upgradeFile() {
   then
     rm --recursive "$FACTORIO_TEMPORARY_OUTPUT_DIRECTORY"
 
-    info "Succeed to load the save file in the latest available Factorio version, no upgrade necessary: '${SAVE_FILE_INPUT_PATH}'"
+    log_info "Succeed to load the save file in the latest available Factorio version, no upgrade necessary: '${SAVE_FILE_INPUT_PATH}'"
 
     return 0
   fi
@@ -257,12 +291,12 @@ function upgradeFile() {
 
   if [[ -z "$FACTORIO_VERSION_UPGRADED" ]];
   then
-    info "Succeed to load the save file in version ${FACTORIO_VERSION_LOADED}, but not in any newer Factorio version. The save file may have been upgraded, but probably not to the latest version."
+    log_info "Succeed to load the save file in version ${FACTORIO_VERSION_LOADED}, but not in any newer Factorio version. The save file may have been upgraded, but probably not to the latest version."
 
     return 0
   fi
 
-  info "Loaded the save file in version ${FACTORIO_VERSION_LOADED}, then upgraded it to version ${FACTORIO_VERSION_UPGRADED}: '${SAVE_FILE_OUTPUT_PATH}'"
+  log_notice "Loaded the save file in version ${FACTORIO_VERSION_LOADED}, then upgraded it to version ${FACTORIO_VERSION_UPGRADED}: '${SAVE_FILE_OUTPUT_PATH}'"
 }
 
 function main() {
@@ -312,7 +346,7 @@ function main() {
   fi
 
   function cleanup() {
-    rm --recursive --force "$FACTORIO_TEMPORARY_BASE_DIRECTORY" || info "Could not remove the temporary directory. This usually happens because it is owned by the temporary directories were created by a service account inside the podman image. Remember to manually remove '${FACTORIO_TEMPORARY_BASE_DIRECTORY}' ($(du --human-readable --total "${FACTORIO_TEMPORARY_BASE_DIRECTORY}" | tail --lines 1 | cut --fields 1))"
+    rm --recursive --force "$FACTORIO_TEMPORARY_BASE_DIRECTORY" || error "Could not remove the temporary directory. This usually happens because it is owned by the temporary directories were created by a service account inside the podman image. Remember to manually remove '${FACTORIO_TEMPORARY_BASE_DIRECTORY}' ($(du --human-readable --total "${FACTORIO_TEMPORARY_BASE_DIRECTORY}" | tail --lines 1 | cut --fields 1))"
   }
 
   trap cleanup EXIT
@@ -324,6 +358,7 @@ function main() {
     local SAVE_FILE_OUTPUT_PATH="${SAVE_FILES_OUTPUT_DIRECTORY}/${SAVE_FILE_INPUT_PATH_BASENAME}"
 
     upgradeFile "$SAVE_FILE_INPUT_PATH" "$SAVE_FILE_OUTPUT_PATH"
+    printf '\n'
   done
 }
 
