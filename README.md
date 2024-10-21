@@ -97,7 +97,8 @@ factorio-save-upgrader <output directory> <input directory or file(s)>
 
 Examples assume loading saves from [Factorio's default user data directory location on a Linux system](https://wiki.factorio.com/Application_directory).
 
-## Basic examples
+<details>
+<summary>Basic examples</summary>
 
 **Simple backup**
 
@@ -117,7 +118,11 @@ mkdir --parents ~/factorio-upgraded-saves
 factorio-save-upgrader ~/factorio-upgraded-saves ~/.factorio/saves
 ```
 
-### Advanced examples
+</details>
+
+
+<details>
+<summary>Advanced examples</summary>
 
 Use one or more environment variables to change some settings; see the source code for details.
 
@@ -145,7 +150,10 @@ Ensure versions are listed in descending order, with a single space between.
 FACTORIO_VERSIONS='0.13 0.12' factorio-save-upgrader ~/factorio-upgraded-saves ~/.factorio/saves
 ```
 
-## Updating the Factorio Docker container images
+</details>
+
+<details>
+<summary>Updating the Factorio Docker container images</summary>
 
 Because this tool executes images in a loop, it doesn't spend time checking if there are any [updated images on Docker Hub](https://hub.docker.com/r/factoriotools/factorio/). You should perform updates manually if you haven't in a couple of weeks.
 
@@ -164,6 +172,8 @@ This tool does not keep data in images or persistent volumes. Be more careful if
 ```shell
 podman image ls --format '{{.Repository}}:{{.Tag}}' --filter 'reference=factoriotools/factorio' | xargs --no-run-if-empty podman image rm
 ```
+
+</details>
 
 ---
 
