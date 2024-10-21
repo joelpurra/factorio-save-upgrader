@@ -402,6 +402,8 @@ function main() {
 		upgradeFile "$SAVE_FILE_INPUT_PATH" "$SAVE_FILE_OUTPUT_PATH"
 		printf '\n'
 	done
+
+	tree -C "$SAVE_FILES_OUTPUT_DIRECTORY"
 }
 
 # NOTE: incomplete list of required external executables.
@@ -413,6 +415,7 @@ assertExecutableInEnvironmentPath 'realpath'
 assertExecutableInEnvironmentPath 'sed'
 assertExecutableInEnvironmentPath 'sort'
 assertExecutableInEnvironmentPath 'tr'
+assertExecutableInEnvironmentPath 'tree'
 
 # NOTE: used during cleanup.
 declare FACTORIO_TEMPORARY_BASE_DIRECTORY
