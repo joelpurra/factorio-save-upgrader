@@ -177,4 +177,4 @@ podman image ls --format '{{.Repository}}:{{.Tag}}' --filter 'reference=factorio
 
 ---
 
-[factorio-save-upgrader](https://joelpurra.com/projects/factorio-save-upgrader/) Copyright &copy; 2022 [Joel Purra](https://joelpurra.com/). Released under [GNU General Public License version 3.0 (GPL-3.0)](https://www.gnu.org/licenses/gpl.html). [Your donations are appreciated!](https://joelpurra.com/donate/)
+[factorio-save-upgrader](https://joelpurra.com/projects/factorio-save-upgrader/) Copyright &copy; 2022, 2023, 2024 [Joel Purra](https://joelpurra.com/). Released under [GNU General Public License version 3.0 (GPL-3.0)](https://www.gnu.org/licenses/gpl.html). [Your donations are appreciated!](https://joelpurra.com/donate/)
