@@ -37,7 +37,7 @@ declare -r FACTORIO_CONFIG_SERVER_SETTINGS_PATH="${FACTORIO_CONFIG_SERVER_SETTIN
 declare -r -a FACTORIO_VERSIONS=(
   # NOTE: only listing "major" versions changes, since the save file format should not change between minor versions.
   # NOTE: skipping the non-numeric docker image tags (latest, stable) for easier version number comparison.
-  ${FACTORIO_VERSIONS:-1.1 1.0 0.18 0.17 0.16 0.15 0.14 0.13 0.12}
+  ${FACTORIO_VERSIONS:-2.0 1.1 1.0 0.17 0.16 0.15 0.14 0.13 0.12}
 )
 
 declare -r FACTORIO_VERSION_LATEST="${FACTORIO_VERSIONS[0]}"

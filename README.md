@@ -19,11 +19,11 @@ The stepwise load/upgrade concept:
 
 ```text
 Loading
-1.1   1.0   0.18   0.17   0.16
+2.0   1.1   1.0    0.17   0.16
 ❌ --> ❌ --> ❌ --> ✅ ... ❓ ...
                     |
 Upgrading           |
-1.1   1.0   0.18    |
+2.0   1.1   1.0     |
 ✅ <-- ✅ <-- ✅ <----
 ```
 
@@ -41,9 +41,9 @@ Here is a table of last known status (although it is presumably constantly outda
 
 | Version | Running | Upgrading from |
 | ------- | ------- | -------------- |
+| 2.0     | ✅      | ✅             |
 | 1.1     | ✅      | ✅             |
 | 1.0     | ✅      | ✅             |
-| 0.18    | ✅      | ✅             |
 | 0.17    | ✅      | ✅             |
 | 0.16    | ❌      | ✅             |
 | 0.15    | ❌      | ✅             |
@@ -51,7 +51,7 @@ Here is a table of last known status (although it is presumably constantly outda
 | 0.13    | ❌      | ❓             |
 | 0.12    | ❌      | ❓             |
 
-Older versions are not supported, unless someone publishes a compatible Docker image.
+Older versions are not supported, unless someone publishes a compatible Docker image. Version 0.18 is no longer available, but should be equivalent to 1.0.
 
 ## Limitations
 
