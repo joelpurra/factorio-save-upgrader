@@ -3,7 +3,7 @@
 </p>
 
 | Factorio v0.12                                                                                                                                                                                                   | Factorio v0.18                                                                                                                                                                                                    |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![A concept of a factory for the trailer in v0.12](https://cdn.factorio.com/assets/img/blog/fff-353-05-factorio012-fullsize.png)](https://cdn.factorio.com/assets/img/blog/fff-353-05-factorio012-fullsize.png) | [![A concept of a factory for the trailer in v0.18 ](https://cdn.factorio.com/assets/img/blog/fff-353-04-factorio018-fullsize.png)](https://cdn.factorio.com/assets/img/blog/fff-353-04-factorio018-fullsize.png) |
 
 [Screenshots of factory concepts](https://www.factorio.com/blog/post/fff-353) for the [Factorio 1.0 launch trailer](https://www.youtube.com/watch?v=BqaAjgpsoW8), showcasing the evolution of the game. The [Factorio blog](https://www.factorio.com/blog/) covers the process in detail.
@@ -38,28 +38,39 @@ v2.0   v1.1   v1.0     |
 
 ## Version compatibility
 
-Not all Factorio versions have (working) container images. Check the [issues for this tool](https://github.com/joelpurra/factorio-save-upgrader/issues?q=) as well as [issues for Factorio Docker](https://github.com/factoriotools/factorio-docker/issues?q=) for possible solutions.
+Not all [Factorio versions in the official archive](https://www.factorio.com/download/archive/) have (working) container images. Check the [issues for this tool](https://github.com/joelpurra/factorio-save-upgrader/issues?q=) as well as [issues for Factorio Docker](https://github.com/factoriotools/factorio-docker/issues?q=) for possible solutions.
 
 Here is a table of last known status (although it is presumably constantly outdated) for the available Factorio Docker container image versions. Major game versions can also load _some_ older save file formats. For example, Factorio v0.17 also supports upgrading from v0.16 and v0.15.
 
-| Version | Running | Upgrading from |
-| ------- | ------- | -------------- |
-| v2.0    | ✅      | ✅             |
-| v1.1    | ✅      | ✅             |
-| v1.0    | ✅      | ✅             |
-| v0.17   | ✅      | ✅             |
-| v0.16   | ❌      | ✅             |
-| v0.15   | ❌      | ✅             |
-| v0.14   | ❌      | ❓             |
-| v0.13   | ❌      | ❓             |
-| v0.12   | ❌      | ❓             |
+| [Version](https://www.factorio.com/download/archive/) | Running | Upgrading from | [Space Age](https://factorio.com/game/content-space-age) |
+| ----------------------------------------------------- | ------- | -------------- | -------------------------------------------------------- |
+| v2.0                                                  | ✅      | ✅             | ✅                                                       |
+| v1.1                                                  | ✅      | ✅             | —                                                        |
+| v1.0                                                  | ✅      | ✅             | —                                                        |
+| v0.17                                                 | ✅      | ✅             | —                                                        |
+| v0.16                                                 | ❌      | ✅             | —                                                        |
+| v0.15                                                 | ❌      | ✅             | —                                                        |
+| v0.14                                                 | ❌      | ❓             | —                                                        |
+| v0.13                                                 | ❌      | ❓             | —                                                        |
+| v0.12                                                 | ❌      | ❓             | —                                                        |
 
-Older versions are not supported, unless someone publishes a compatible container image. Factorio v0.18 is no longer available, but should be equivalent to v1.0.
+Upgrading save files to Factorio v2.0+ requires the [Factorio: Space Age](https://factorio.com/game/content-space-age) expansion on the client. The expansion is automatically supported and enable in the save file "server-side" upgrade process, without any additional purchase.
 
 ## Limitations
 
-- Factorio has evolved over the years. For example some recipes, such as [oil processing](https://www.factorio.com/blog/post/fff-305), have changed so your factory may not run very well without manual fixes.
-- Only upgrading vanilla Factorio has been tested. For this reason, upgrading save files [with mods](https://mods.factorio.com/) are not officially supported by this tool.
+- Factorio has [evolved over the years](https://wiki.factorio.com/Version_history), which may or may not require [manual factory fixes](https://www.factorio.com/blog/post/fff-187).
+  - The "vanilla" base game [Factorio v2.0](https://factorio.com/blog/post/fff-418#2-0) included new rails, train control improvements, circuit network improvements, new fluid system, and much more.
+  - Recipes, such as [oil processing](https://www.factorio.com/blog/post/fff-305), may change between versions.
+- Requires [Factorio: Space Age](https://factorio.com/game/content-space-age) for v2.0+.
+  - Factorio v2.0 uses mods for Factorio: Space Age (also for elevated rails, qualities) which are available in Factorio Docker.
+  - The space age mods are enabled by default, thus all save files upgraded to v2.0+ _become_ space age save files.
+  - Loading an upgraded v2.0+ save in "vanilla" base game Factorio _may work_, but with warnings regarding missing mods — and possibly factory issues.
+  - Set `FACTORIO_VERSIONS='1.1 1.0'` and below to avoid upgrading to v2.0+.
+- Mods configuration is not (yet) supported.
+  - Require editing `./mods/mod-list.json` inside Factorio Docker.
+  - May be used to upgrade "vanilla" base game Factorio 2.0 [by disabling space age](https://github.com/factoriotools/factorio-docker/issues/500#issuecomment-2426967550).
+  - Can perhaps be used to upgrade save files [with third-party mods](https://mods.factorio.com/); may require additional mod files.
+  - Pull requests, including documentation etcetera, welcome.
 - Replay support is untested. Presumably [doesn't upgrade replays](https://wiki.factorio.com/Replay_system), since they are more tightly coupled to the version used for recording. Loading the map may still work, but replaying is not possible.
 - The save preview (screenshot) is lost during automated upgrades. When saving using the full game it is regenerated.
 - This tool doesn't inspect the `savegame.zip` files to try to figure out which upgrades might be necessary. Instead it brute-forces the solution by testing the save file against several major versions of Factorio until loading succeeds. The save file is then upgraded step-by-step through each subsequent major version.
@@ -122,7 +133,6 @@ factorio-save-upgrader ~/factorio-upgraded-saves ~/.factorio/saves
 ```
 
 </details>
-
 
 <details>
 <summary>Advanced examples</summary>
