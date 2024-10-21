@@ -50,6 +50,8 @@ function timestamp() {
   date --iso-8601='seconds'
 }
 
+# ---
+
 function shouldDisplayAnsiColor() {
   # https://no-color.org/
   test -z "${NO_COLOR:-}"
@@ -66,6 +68,46 @@ function optionalAnsiColor() {
     printf '%s' "$@"
   fi
 }
+
+function assertRequiredValue() {
+  # NOTE: explicitly passing both the name and value instead of eval'ing the variable name.
+  local -r ASSERT_NAME="$1"
+  shift
+  local -r ASSERT_VALUE="${1:-}"
+  shift || :
+
+  if [ -z "$ASSERT_VALUE" ]; then
+    die "missing required value: \$${ASSERT_NAME}"
+  fi
+}
+
+function isExecutableInEnvironmentPath() {
+  # NOTE: uses $PATH from the (current user's) environment.
+  local -r IS_USER_EXECUTABLE="$1"
+  shift
+
+  assertRequiredValue 'IS_USER_EXECUTABLE' "$IS_USER_EXECUTABLE"
+
+  if command -v "$IS_USER_EXECUTABLE" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  return 1
+}
+
+function assertExecutableInEnvironmentPath() {
+  # NOTE: uses $PATH from the (current user's) environment.
+  local -r ASSERT_USER_EXECUTABLE="$1"
+  shift
+
+  assertRequiredValue 'ASSERT_USER_EXECUTABLE' "$ASSERT_USER_EXECUTABLE"
+
+  if ! isExecutableInEnvironmentPath "$ASSERT_USER_EXECUTABLE"; then
+    die "missing required executable in \$PATH: '${ASSERT_USER_EXECUTABLE}'"
+  fi
+}
+
+# ---
 
 function die() {
   echo "$(timestamp) ${PROJECT_NAME} $(optionalAnsiColor 91 "FATAL"):" "${@}" >&2
@@ -361,6 +403,16 @@ function main() {
     printf '\n'
   done
 }
+
+# NOTE: incomplete list of required external executables.
+assertExecutableInEnvironmentPath 'cut'
+assertExecutableInEnvironmentPath 'find'
+assertExecutableInEnvironmentPath 'mktemp'
+assertExecutableInEnvironmentPath 'podman'
+assertExecutableInEnvironmentPath 'realpath'
+assertExecutableInEnvironmentPath 'sed'
+assertExecutableInEnvironmentPath 'sort'
+assertExecutableInEnvironmentPath 'tr'
 
 # NOTE: used during cleanup.
 declare FACTORIO_TEMPORARY_BASE_DIRECTORY
