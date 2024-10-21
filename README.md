@@ -35,9 +35,9 @@ Upgrading           |
 
 ## Version compatibility
 
-Not all Factorio versions have (working) Docker images. Check the [issues for this tool](https://github.com/joelpurra/factorio-save-upgrader/issues?q=) as well as [issues for Factorio Docker](https://github.com/factoriotools/factorio-docker/issues?q=) for possible solutions.
+Not all Factorio versions have (working) container images. Check the [issues for this tool](https://github.com/joelpurra/factorio-save-upgrader/issues?q=) as well as [issues for Factorio Docker](https://github.com/factoriotools/factorio-docker/issues?q=) for possible solutions.
 
-Here is a table of last known status (although it is presumably constantly outdated) for the available Factorio Docker image versions. Major game versions can also load _some_ older save file formats. For example, Factorio 0.17 also supports upgrading from 0.16 and 0.15.
+Here is a table of last known status (although it is presumably constantly outdated) for the available Factorio Docker container image versions. Major game versions can also load _some_ older save file formats. For example, Factorio 0.17 also supports upgrading from 0.16 and 0.15.
 
 | Version | Running | Upgrading from |
 | ------- | ------- | -------------- |
@@ -51,7 +51,7 @@ Here is a table of last known status (although it is presumably constantly outda
 | 0.13    | ❌      | ❓             |
 | 0.12    | ❌      | ❓             |
 
-Older versions are not supported, unless someone publishes a compatible Docker image. Version 0.18 is no longer available, but should be equivalent to 1.0.
+Older versions are not supported, unless someone publishes a compatible container image. Version 0.18 is no longer available, but should be equivalent to 1.0.
 
 ## Limitations
 
@@ -66,9 +66,7 @@ Older versions are not supported, unless someone publishes a compatible Docker i
 
 - Creating backups of your save files _before_ attempting to upgrade them. You don't want to lose your _precious factory_, do you?
 - A [Unix](https://en.wikipedia.org/wiki/Unix-like)/[Linux](https://en.wikipedia.org/wiki/Linux) system with common programs such as `bash`, `sed`, `find`, `sort`, `mktemp`, `realpath`.
-- [Docker](https://docker.com/) to run the Factorio Docker images.
-  - Does not require `root` access if your user belongs to the `docker` group.
-  - Similar tools, like [Podman](https://podman.io/), should also work.
+- [Podman](https://podman.io/) (in rootless mode) to run the Factorio Docker container images.
 
 ## Installation
 
@@ -147,7 +145,7 @@ Ensure versions are listed in descending order, with a single space between.
 FACTORIO_VERSIONS='0.13 0.12' factorio-save-upgrader ~/factorio-upgraded-saves ~/.factorio/saves
 ```
 
-## Updating the Factorio Docker images
+## Updating the Factorio Docker container images
 
 Because this tool executes images in a loop, it doesn't spend time checking if there are any [updated images on Docker Hub](https://hub.docker.com/r/factoriotools/factorio/). You should perform updates manually if you haven't in a couple of weeks.
 
@@ -156,7 +154,7 @@ Advanced users may use custom images; see the source code for details.
 **Pull updates for all local Factorio images**
 
 ```shell
-docker image ls --format '{{.Repository}}:{{.Tag}}' --filter 'reference=factoriotools/factorio' | xargs --max-lines=1 docker pull
+podman image ls --format '{{.Repository}}:{{.Tag}}' --filter 'reference=factoriotools/factorio' | xargs --no-run-if-empty --max-lines='1' podman image pull
 ```
 
 **Delete all local Factorio images to force re-download**
@@ -164,7 +162,7 @@ docker image ls --format '{{.Repository}}:{{.Tag}}' --filter 'reference=factorio
 This tool does not keep data in images or persistent volumes. Be more careful if you use the images for anything else, such as actually running a game server.
 
 ```shell
-docker image rm $(docker image ls --format '{{.Repository}}:{{.Tag}}' --filter 'reference=factoriotools/factorio')
+podman image ls --format '{{.Repository}}:{{.Tag}}' --filter 'reference=factoriotools/factorio' | xargs --no-run-if-empty podman image rm
 ```
 
 ---

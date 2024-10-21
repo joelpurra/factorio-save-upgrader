@@ -22,7 +22,7 @@ declare SCRIPT_DIRECTORY
 SCRIPT_DIRECTORY="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 
 # NOTE: configurable via environment variables.
-declare -r -i FACTORIO_SAVE_UPGRADER_DEBUG_LEVEL="${FACTORIO_SAVE_UPGRADER_DEBUG_LEVEL:-0}"
+declare -r -i FACTORIO_SAVE_UPGRADER_DEBUG_LEVEL="${FACTORIO_SAVE_UPGRADER_DEBUG_LEVEL:-"0"}"
 
 if (( FACTORIO_SAVE_UPGRADER_DEBUG_LEVEL > 0 ));
 then
@@ -30,13 +30,13 @@ then
 fi
 
 # NOTE: configurable via environment variables.
-declare -r FACTORIO_DOCKER_IMAGE="${FACTORIO_DOCKER_IMAGE:-factoriotools/factorio}"
-declare -r FACTORIO_TIMEOUT="${FACTORIO_TIMEOUT:-60s}"
-declare -r FACTORIO_CONFIG_SERVER_SETTINGS_PATH="${FACTORIO_CONFIG_SERVER_SETTINGS_PATH:-${SCRIPT_DIRECTORY}/config/server-settings.json}"
+declare -r FACTORIO_CONTAINER_IMAGE="${FACTORIO_CONTAINER_IMAGE:-"docker.io/factoriotools/factorio"}"
+declare -r FACTORIO_TIMEOUT="${FACTORIO_TIMEOUT:-"60s"}"
+declare -r FACTORIO_CONFIG_SERVER_SETTINGS_PATH="${FACTORIO_CONFIG_SERVER_SETTINGS_PATH:-"${SCRIPT_DIRECTORY}/config/server-settings.json"}"
 # shellcheck disable=SC2206
 declare -r -a FACTORIO_VERSIONS=(
   # NOTE: only listing "major" versions changes, since the save file format should not change between minor versions.
-  # NOTE: skipping the non-numeric docker image tags (latest, stable) for easier version number comparison.
+  # NOTE: skipping the non-numeric container image tags (latest, stable) for easier version number comparison.
   ${FACTORIO_VERSIONS:-2.0 1.1 1.0 0.17 0.16 0.15 0.14 0.13 0.12}
 )
 
@@ -85,9 +85,9 @@ function runFactorioVersion() {
   local -r FACTORIO_VERSION="$1"
   shift
 
-  local FACTORIO_DOCKER_IMAGE_FULL="${FACTORIO_DOCKER_IMAGE}:${FACTORIO_VERSION}"
+  local FACTORIO_CONTAINER_IMAGE_FULL="${FACTORIO_CONTAINER_IMAGE}:${FACTORIO_VERSION}"
 
-  info "Attempting to load save in Factorio docker image '${FACTORIO_DOCKER_IMAGE_FULL}' (timeout ${FACTORIO_TIMEOUT})"
+  info "Attempting to load save in Factorio container image '${FACTORIO_CONTAINER_IMAGE_FULL}' (timeout ${FACTORIO_TIMEOUT})"
 
   local -r FACTORIO_TEMPORARY_DATA_DIRECTORY="${FACTORIO_TEMPORARY_BASE_DIRECTORY}/${FACTORIO_VERSION}"
 
@@ -105,9 +105,9 @@ function runFactorioVersion() {
   cp "$FACTORIO_CONFIG_SERVER_SETTINGS_PATH" "$FACTORIO_TEMPORARY_SERVER_SETTINGS_PATH"
 
     # NOTE: separate image download from execution to avoid timeouts.
-  if [[ "$(docker image inspect --format 'image found' "$FACTORIO_DOCKER_IMAGE_FULL" 2>/dev/null)" != "image found" ]];
+  if [[ "$(podman image inspect --format 'image found' "$FACTORIO_CONTAINER_IMAGE_FULL" 2>/dev/null)" != "image found" ]];
   then
-    docker pull "$FACTORIO_DOCKER_IMAGE_FULL" >&2
+    podman image pull "$FACTORIO_CONTAINER_IMAGE_FULL" >&2
   fi
 
   set +o errexit
@@ -115,15 +115,16 @@ function runFactorioVersion() {
   # NOTE: running the server with a timeout, so it shuts down even if the map loaded correctly.
   # NOTE: you can connect to the running server if you direct connect to localhost.
   timeout "$FACTORIO_TIMEOUT" \
-    docker run \
-      --init \
+    podman container run \
       --rm \
-      -p 34197:34197/udp \
-      -p 27015:27015/tcp \
+      --init \
+      --name "$PROJECT_NAME" \
+      --publish '127.0.0.1:34197:34197/udp' \
+      --publish '127.0.0.1:27015:27015/tcp' \
       --volume "${FACTORIO_TEMPORARY_SAVES_DIRECTORY}:/factorio/saves/" \
       --volume "${FACTORIO_TEMPORARY_SERVER_SETTINGS_PATH}:/factorio/config/server-settings.json" \
-      --name "$PROJECT_NAME" \
-      "$FACTORIO_DOCKER_IMAGE_FULL" |& verboseStream
+      "$FACTORIO_CONTAINER_IMAGE_FULL" \
+    |& verboseStream
 
   local -r -i FACTORIO_EXIT_CODE="${PIPESTATUS[0]}"
 
@@ -132,22 +133,23 @@ function runFactorioVersion() {
   # NOTE: exit code 124 means there was an execution timeout, which should mean that the map loaded successfully and the server was running.
   if (( FACTORIO_EXIT_CODE == 0 || FACTORIO_EXIT_CODE == 124 ));
   then
-    info "Succeeded when using '${FACTORIO_DOCKER_IMAGE_FULL}'"
+    info "Succeeded when using '${FACTORIO_CONTAINER_IMAGE_FULL}'"
 
     cp "$FACTORIO_TEMPORARY_SAVE_PATH" "$SAVE_FILE_OUTPUT_PATH"
   else
-    info "Failed when using '${FACTORIO_DOCKER_IMAGE_FULL}'"
+    info "Failed when using '${FACTORIO_CONTAINER_IMAGE_FULL}'"
   fi
 
   # NOTE: temporary file cleanup from "inside" the container, to workaround internal account service access issues.
-  docker run \
-    --init \
+  podman container run \
     --rm \
-    --volume "${FACTORIO_TEMPORARY_SAVES_DIRECTORY}:/factorio/saves/" \
+    --init \
     --name "$PROJECT_NAME" \
+    --volume "${FACTORIO_TEMPORARY_SAVES_DIRECTORY}:/factorio/saves/" \
     --entrypoint '/bin/bash' \
-    "$FACTORIO_DOCKER_IMAGE_FULL" \
-    -c 'rm -r /factorio >/dev/null 2>&1' >&2
+    "$FACTORIO_CONTAINER_IMAGE_FULL" \
+    -c 'rm -r /factorio >/dev/null 2>&1' \
+  >&2
 
   rm --recursive --force "$FACTORIO_TEMPORARY_DATA_DIRECTORY"
 
@@ -310,7 +312,7 @@ function main() {
   fi
 
   function cleanup() {
-    rm --recursive --force "$FACTORIO_TEMPORARY_BASE_DIRECTORY" || info "Could not remove the temporary directory. This usually happens because it is owned by the temporary directories were created by a service account inside the docker image. Remember to manually remove '${FACTORIO_TEMPORARY_BASE_DIRECTORY}' ($(du --human-readable --total "${FACTORIO_TEMPORARY_BASE_DIRECTORY}" | tail --lines 1 | cut --fields 1))"
+    rm --recursive --force "$FACTORIO_TEMPORARY_BASE_DIRECTORY" || info "Could not remove the temporary directory. This usually happens because it is owned by the temporary directories were created by a service account inside the podman image. Remember to manually remove '${FACTORIO_TEMPORARY_BASE_DIRECTORY}' ($(du --human-readable --total "${FACTORIO_TEMPORARY_BASE_DIRECTORY}" | tail --lines 1 | cut --fields 1))"
   }
 
   trap cleanup EXIT
